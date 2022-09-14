@@ -5,6 +5,7 @@ from tempoapiclient import client
 import json
 import requests
 from azubiheftAPI.azubiheft import AzubiheftAPI
+from azubiheftAPI.WebUntis.webuntisAPI import get_timetable_description
 import argparse
 
 with open('/home/lalwazny/.local/bin/azubiheftAPI/credentials.json') as file:
@@ -40,6 +41,7 @@ worklogs = tempo.get_worklogs(
 )
 
 
+
 if __name__ == '__main__':
     with requests.session() as session:
         api = AzubiheftAPI(session)
@@ -50,7 +52,7 @@ if __name__ == '__main__':
             worklogWeek = api.get_week_number(worklogDate)
             art = '1'
             log = worklog['issue']['key']
-
+            print(worklogDate)
             if log == 'FOODS6-55':
                 worklogDescription = 'Foodspring Project team daily'
                 print(worklogDescription)
@@ -58,7 +60,12 @@ if __name__ == '__main__':
                 worklogDescription = 'Urlaub'
                 art = '3'
                 print(worklogDescription)
+            elif log == 'FLAGBIT-5':
+                worklogDescription = 'Arbeitsunfähig'
+                art = '5'
+                print(worklogDescription)
             elif log == 'FLAGBIT-4':
+                get_timetable_description(worklogDate)
                 worklogDescription = 'Schule' #! currently just a placeholder until the WebUntis script is done
                 art = '2'
                 #TODO call a function to pull the description from webUntis
