@@ -47,12 +47,12 @@ if __name__ == '__main__':
         api = AzubiheftAPI(session)
         api.login_user(data['azubiheft']['email'], data['azubiheft']['password'])
         
-        for worklog in worklogs:  
+        for worklog in worklogs:
             worklogDate = worklog['startDate']
             worklogWeek = api.get_week_number(worklogDate)
             art = '1'
             log = worklog['issue']['key']
-            print(worklogDate)
+            
             if log == 'FOODS6-55':
                 worklogDescription = 'Foodspring Project team daily'
                 print(worklogDescription)
@@ -65,13 +65,11 @@ if __name__ == '__main__':
                 art = '5'
                 print(worklogDescription)
             elif log == 'FLAGBIT-4':
-                get_timetable_description(worklogDate)
-                worklogDescription = 'Schule' #! currently just a placeholder until the WebUntis script is done
+                worklogDescription = get_timetable_description(worklogDate)
                 art = '2'
-                #TODO call a function to pull the description from webUntis
                 print(worklogDescription)
             else:
                 worklogDescription = worklog["description"]
                 print(worklogDescription)
 
-            # api.create_entry(worklogDate, worklogWeek, art, worklogDescription)
+            api.create_entry(worklogDate, worklogWeek, art, worklogDescription)
