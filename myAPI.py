@@ -5,7 +5,8 @@ from tempoapiclient import client
 import json
 import requests
 from azubiheftAPI.azubiheft import AzubiheftAPI
-from azubiheftAPI.WebUntis.webuntisAPI import get_timetable_description
+from azubiheftAPI.WebUntis.webuntis import Webuntis
+from azubiheftAPI.WebUntis.cache import Cache
 import argparse
 
 with open('/home/lalwazny/.local/bin/azubiheftAPI/credentials.json') as file:
@@ -41,12 +42,39 @@ worklogs = tempo.get_worklogs(
 )
 
 
+# Get login credentials from env file
+username = data['webuntis']['name']
+password = data['webuntis']['password']
+server = data['webuntis']['server']
+school = data['webuntis']['school']
+
+def get_topics(start, end):
+    client = Webuntis(username, password, server, school)
+
+    client.login()
+
+    lessons = client.get_all_lessons(start, end)
+
+    lesson_topic_dict = {}
+    
+    for year in lessons:
+        for lesson in year:
+            index_day = lesson["date"]
+
+            if lesson_topic_dict.get(index_day) is None:
+                lesson_topic_dict[index_day] = []
+
+            lesson_topic_dict[index_day].append(client.get_lesson_topic(lesson))
+    
+    client.logout()
+    
+    return lesson_topic_dict
 
 if __name__ == '__main__':
     with requests.session() as session:
         api = AzubiheftAPI(session)
         api.login_user(data['azubiheft']['email'], data['azubiheft']['password'])
-        
+
         for worklog in worklogs:
             worklogDate = worklog['startDate']
             worklogWeek = api.get_week_number(worklogDate)
@@ -54,22 +82,31 @@ if __name__ == '__main__':
             log = worklog['issue']['key']
             
             if log == 'FOODS6-55':
-                worklogDescription = 'Foodspring Project team daily'
-                print(worklogDescription)
+                worklogDescription = 'Shopware-Project: Team daily'
             elif log == 'FLAGBIT-3':
                 worklogDescription = 'Urlaub'
                 art = '3'
-                print(worklogDescription)
             elif log == 'FLAGBIT-5':
                 worklogDescription = 'Arbeitsunfähig'
                 art = '5'
-                print(worklogDescription)
             elif log == 'FLAGBIT-4':
-                worklogDescription = get_timetable_description(worklogDate)
+                date = int(worklogDate.replace('-', ''))
+                
+                # TODO modify this date object so you can use it as a parameter 
+                start = int(args.startDate.splite('-'))
+                end = int(args.endDate.replace('-', ''))
+                
+                
+                topics = []
+                for topic in get_topics(start, end)[date]:
+                    topics.append(f"({topic['subjectLong']}) {topic['topic']}")
+                topics = [topic + ' === ' for topic in topics]
+                topics = sorted(set(topics))
+                topics[-1] = topics[-1][:-5]
+                worklogDescription = topics
                 art = '2'
-                print(worklogDescription)
             else:
-                worklogDescription = worklog["description"]
-                print(worklogDescription)
+                worklogDescription = f'Shopware-Projekt: {worklog["description"]}'
 
-            api.create_entry(worklogDate, worklogWeek, art, worklogDescription)
+            print(worklogDescription)
+            # api.create_entry(worklogDate, worklogWeek, art, worklogDescription)
