@@ -9,14 +9,6 @@ from azubiheftAPI.WebUntis.webuntis import Webuntis
 from azubiheftAPI.WebUntis.cache import Cache
 import argparse
 
-with open('/home/lalwazny/.local/bin/azubiheftAPI/credentials.json') as file:
-    data = json.load(file)
-
-tempo = client.Tempo(
-    auth_token=data['tempo']['token'],
-    base_url="https://api.tempo.io/core/3"
-)
-
 def valid_date(s):
     try:
         return datetime.strptime(s, "%Y-%m-%d").date()
@@ -35,12 +27,19 @@ args = parser.parse_args()
 if args.startDate > args.endDate:
     print('endDate needs to be after the startDate')
 
+with open('/home/lalwazny/.local/bin/azubiheftAPI/credentials.json') as file:
+    data = json.load(file)
+
+tempo = client.Tempo(
+    auth_token=data['tempo']['token'],
+    base_url="https://api.tempo.io/core/3"
+)
+
 worklogs = tempo.get_worklogs(
     dateFrom=args.startDate,
     dateTo=args.endDate,
     accountId=data['tempo']['account_id']
 )
-
 
 # Get login credentials from env file
 username = data['webuntis']['name']
@@ -48,12 +47,8 @@ password = data['webuntis']['password']
 server = data['webuntis']['server']
 school = data['webuntis']['school']
 
-def get_topics(start, end):
-    client = Webuntis(username, password, server, school)
-
-    client.login()
-
-    lessons = client.get_all_lessons(start, end)
+def get_lessons(client, start, end):
+    lessons = client.get_lessons(start, end)
 
     lesson_topic_dict = {}
     
@@ -66,47 +61,61 @@ def get_topics(start, end):
 
             lesson_topic_dict[index_day].append(client.get_lesson_topic(lesson))
     
-    client.logout()
-    
     return lesson_topic_dict
+
+
+def get_lesson_topics(client, date):
+    start = format_date(args.startDate)
+    end = format_date(args.endDate)
+    
+    topics = []
+
+    for topic in get_lessons(client, start, end)[date]:
+        topics.append(f"({topic['subjectLong']}) {topic['topic']}")
+    
+    topics = sorted(set(topics))
+    topics = [topic + ' === ' for topic in topics]
+    topics[-1] = topics[-1][:-5]
+
+    return topics
+
+def format_date(date):
+    return int(date.strftime("%Y%m%d"))
+
+# maybe pass a name of a function as a value which returns the worklog and art 
+logs = {
+    'FOODS6-55': ['Shopware-Project: Team daily', '1'],
+    'FLAGBIT-3': ['Urlaub', '3'],
+    'FLAGBIT-5': ['Arbeitsunfähig', '5']
+}
 
 if __name__ == '__main__':
     with requests.session() as session:
-        api = AzubiheftAPI(session)
+        api = AzubiheftAPI(session) #? make the session a property of the API which is being created internally
         api.login_user(data['azubiheft']['email'], data['azubiheft']['password'])
+        
+        client = Webuntis(username, password, server, school)
+        client.login()
 
         for worklog in worklogs:
             worklogDate = worklog['startDate']
             worklogWeek = api.get_week_number(worklogDate)
-            art = '1'
             log = worklog['issue']['key']
+            blub = logs.get(log, None)
             
-            if log == 'FOODS6-55':
-                worklogDescription = 'Shopware-Project: Team daily'
-            elif log == 'FLAGBIT-3':
-                worklogDescription = 'Urlaub'
-                art = '3'
-            elif log == 'FLAGBIT-5':
-                worklogDescription = 'Arbeitsunfähig'
-                art = '5'
-            elif log == 'FLAGBIT-4':
-                date = int(worklogDate.replace('-', ''))
-                
-                # TODO modify this date object so you can use it as a parameter 
-                start = int(args.startDate.splite('-'))
-                end = int(args.endDate.replace('-', ''))
-                
-                
-                topics = []
-                for topic in get_topics(start, end)[date]:
-                    topics.append(f"({topic['subjectLong']}) {topic['topic']}")
-                topics = [topic + ' === ' for topic in topics]
-                topics = sorted(set(topics))
-                topics[-1] = topics[-1][:-5]
-                worklogDescription = topics
-                art = '2'
-            else:
-                worklogDescription = f'Shopware-Projekt: {worklog["description"]}'
+            if blub is None:
+                art = '1'
 
-            print(worklogDescription)
+                if log == 'FLAGBIT-4':
+                    date = int(worklogDate.replace('-', ''))
+                    worklogDescription = get_lesson_topics(client, date)
+                    art = '2'
+                elif log[:6] == 'FOODS6':
+                    worklogDescription = f'Shopware-Projekt: {worklog["description"]}'
+                else: 
+                    worklogDescription = worklog["description"]
+            else:
+                worklogDescription, art = blub[0], blub[1] if blub else None
+
+            print(worklogDescription, art)
             # api.create_entry(worklogDate, worklogWeek, art, worklogDescription)
