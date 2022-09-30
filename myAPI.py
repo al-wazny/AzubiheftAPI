@@ -3,7 +3,6 @@
 from datetime import datetime
 from tempoapiclient import client
 import json
-import requests
 from azubiheftAPI.azubiheft import AzubiheftAPI
 from azubiheftAPI.WebUntis.webuntis import Webuntis
 import argparse
@@ -122,18 +121,17 @@ def get_entry(client, worklog):
 
 if __name__ == '__main__':
     # connect to azubiheft to create the entrys later on
-    azubiheft = AzubiheftAPI().login_user(data['azubiheft']['email'], data['azubiheft']['password'])
+    azubiheft = AzubiheftAPI()
+    azubiheft.login(data['azubiheft']['email'], data['azubiheft']['password'])
     
     # connect to webuntis to pull the lesson topics
-    webuntisClient = Webuntis(username, password, server, school).login()
+    webuntisClient = Webuntis(username, password, server, school)
+    webuntisClient.login()
 
     for worklog in worklogs:
         worklogDescription, art = get_entry(webuntisClient, worklog)
-
         worklogDate = worklog['startDate']
-        worklogWeek = azubiheft.get_week_number(worklogDate)
         
-        print(worklogDescription, art)
-        # azubiheft.create_entry(worklogDate, worklogWeek, art, worklogDescription)
+        azubiheft.create_entry(worklogDate, worklogDescription, art)
     
     webuntisClient.logout()
