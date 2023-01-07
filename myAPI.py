@@ -89,7 +89,7 @@ def get_lesson_topics(client, date):
 def format_date(date):
     return int(date.strftime("%Y%m%d"))
 
-# maybe pass a name of a function as a value which returns the worklog and art 
+# dictionary that contains the known Tickets which returns a corresponding description and artID
 logs = {
     'FOODS6-55': ['Shopware-Project: Team daily', '1'],
     'FLAGBIT-3': ['Urlaub', '3'],
@@ -131,6 +131,9 @@ if __name__ == '__main__':
     for worklog in worklogs:
         worklogDescription, art = get_entry(webuntisClient, worklog)
         worklogDate = worklog['startDate']
+
+        if 'in den Tag starten' in worklogDescription:
+            continue
         
         azubiheft.create_entry(worklogDate, worklogDescription, art)
     
