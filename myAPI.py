@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
-from tempoapiclient import client
+from tempoapiclient import client_v3
 import json
-from azubiheftAPI.azubiheft import AzubiheftAPI
-from azubiheftAPI.WebUntis.webuntis import Webuntis
+from helpers.azubiheft import AzubiheftAPI
+from helpers.webuntis import Webuntis
 import argparse
 
 # Is being used to check if the user typed in a valid date (format and if the date even exists)
@@ -29,11 +29,11 @@ if args.startDate > args.endDate:
     print('endDate needs to be after the startDate')
 
 # Get login credentials from credentials file
-with open('/home/lalwazny/.local/bin/azubiheftAPI/credentials.json') as file:
+with open('/home/ali/repos/AzubiheftAPI/credentials.json') as file:
     data = json.load(file)
 
 # log into tempo
-tempo = client.Tempo(
+tempo = client_v3.Tempo(
     auth_token=data['tempo']['token'],
     base_url="https://api.tempo.io/core/3"
 )
@@ -44,11 +44,6 @@ worklogs = tempo.get_worklogs(
     dateTo=args.endDate,
     accountId=data['tempo']['account_id']
 )
-
-username = data['webuntis']['name']
-password = data['webuntis']['password']
-server = data['webuntis']['server']
-school = data['webuntis']['school']
 
 # pull all the lessons between two dates
 def get_lessons(client, start, end):
@@ -91,15 +86,15 @@ def format_date(date):
 
 # dictionary that contains the known Tickets which returns a corresponding description and artID
 logs = {
-    'FOODS6-55': ['Shopware-Project: Team daily', '1'],
+    'WALDHAUSSW-244': ['Shopware-Project: Team daily', '1'],
     'FLAGBIT-3': ['Urlaub', '3'],
-    'FLAGBIT-4': locals()['get_lesson_topics'],
+    'FLAGBIT-4': ["Schule", '2'],
     'FLAGBIT-5': ['Arbeitsunfähig', '5']
 }
 
 # return a static description if the worklog doesn't have a description is it's type is unknown (not in the dictionary)
 def get_unkown_ticket_desciption(issue, worklog):
-    if issue[:6] == 'FOODS6':
+    if issue[:6] == 'WALDHA':
         worklogDescription = f'Shopware-Projekt: {worklog["description"]}'
     else:
         worklogDescription = worklog["description"]
@@ -107,14 +102,14 @@ def get_unkown_ticket_desciption(issue, worklog):
     return worklogDescription, '1'
 
 # format the text for the entry depending on the type of the worklog
-def get_entry(client, worklog):
+def get_entry(worklog):
     date = int(worklog['startDate'].replace('-', ''))
     issue = worklog['issue']['key']
     ticket = logs.get(issue, None)
 
-    if callable(ticket):
-        return ticket(client, date)
-    elif ticket is None:
+    # if callable(ticket):
+    #     return ticket(client, date)
+    if ticket is None:
         return get_unkown_ticket_desciption(issue, worklog)
     else:
         return ticket[0], ticket[1]
@@ -125,11 +120,11 @@ if __name__ == '__main__':
     azubiheft.login(data['azubiheft']['email'], data['azubiheft']['password'])
     
     # connect to webuntis to pull the lesson topics
-    webuntisClient = Webuntis(username, password, server, school)
-    webuntisClient.login()
+    # webuntisClient = Webuntis(data['webuntis']['name'], data['webuntis']['password'], data['webuntis']['server'], data['webuntis']['school'])
+    # webuntisClient.login()
 
     for worklog in worklogs:
-        worklogDescription, art = get_entry(webuntisClient, worklog)
+        worklogDescription, art = get_entry(worklog)
         worklogDate = worklog['startDate']
 
         if 'in den Tag starten' in worklogDescription:
@@ -137,4 +132,5 @@ if __name__ == '__main__':
         
         azubiheft.create_entry(worklogDate, worklogDescription, art)
     
-    webuntisClient.logout()
+    # webuntisClient.logout()
+

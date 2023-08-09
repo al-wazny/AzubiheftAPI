@@ -42,6 +42,7 @@ class Webuntis:
         querystring = {
             "school": self.school
         }
+        {'id': 'Awesome', 'method': 'authenticate', 'params': {'user': 'al-w-007f', 'password': 'Jajabin1', 'client': 'Awesome'}, 'jsonrpc': '2.0'}
         payload = {
             "id": self.id,
             "method": "authenticate",
